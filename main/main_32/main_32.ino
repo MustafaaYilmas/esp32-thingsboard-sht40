@@ -1,10 +1,10 @@
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
-#include <ArduinoOTA.h>
 #include <ThingsBoard.h>
 #include <Arduino_MQTT_Client.h>
 #include <WiFiClient.h>
 #include <ArduinoJson.h>
+#include "Adafruit_SHT4x.h"
 
 #define WIFI_AP_NAME        "Vodafonenet_Wifi_8047"
 #define WIFI_PASSWORD       "U5DerrGGDUEz"
@@ -13,13 +13,23 @@
 
 constexpr uint16_t MAX_MESSAGE_SIZE = 128;
 constexpr uint16_t THINGSBOARD_PORT = 1883;
+
+
 WiFiClient espClient;
 Arduino_MQTT_Client mqttClient(espClient);
 ThingsBoard tb(mqttClient, MAX_MESSAGE_SIZE);
 int status = WL_IDLE_STATUS;
-int quant = 250;
-int send_delay = 2000;
-int send_passed = 0;
+
+
+Adafruit_SHT4x sht4 = Adafruit_SHT4x();
+
+
+struct SHT40Data
+{
+  float temperature;
+  float humidity;
+};
+
 
 void InitWiFi()
 {
@@ -44,20 +54,43 @@ void reconnect() {
   }
 }
 
+void shtBegin(){
+    Serial.println("Adafruit SHT4x test");
+  if (! sht4.begin()) {
+    Serial.println("Couldn't find SHT4x");
+    while (1) delay(1);
+  }
+
+  Serial.println("Found SHT4x sensor");
+  Serial.print("Serial number 0x");
+  Serial.println(sht4.readSerial(), HEX);
+
+  sht4.setPrecision(SHT4X_HIGH_PRECISION);
+  sht4.setHeater(SHT4X_NO_HEATER);
+}
+
+SHT40Data readTemperatureAndHumidity(){
+  sensors_event_t humidity, temp;
+  sht4.getEvent(&humidity, &temp);
+  Serial.print("Temperature: "); Serial.print(temp.temperature); Serial.println(" degrees C");
+  Serial.print("Humidity: "); Serial.print(humidity.relative_humidity); Serial.println("% rH");
+
+  SHT40Data data;
+  data.temperature = temp.temperature;
+  data.humidity = humidity.relative_humidity;
+  return data;
+}
+
+
 void setup() {
   Serial.begin(115200);
   InitWiFi();
-  ArduinoOTA.begin();
-  Serial.println("Ready");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
+  delay(1000);
+  shtBegin();
 }
 
 void loop() {
-  ArduinoOTA.handle();
-  delay(quant);
-  send_passed += quant;
-
+  delay(1000);
   if (WiFi.status() != WL_CONNECTED) {
     reconnect();
     return;
@@ -70,21 +103,12 @@ void loop() {
     }
   }
 
-  // Generate random telemetry data
-  float randomTemperature = random(0, 100);
-  float randomHumidity = random(0, 100);
-  float randomPressure = random(900, 1100);
+  SHT40Data returnedData = readTemperatureAndHumidity();
 
-  // Send telemetry data to ThingsBoard
-  tb.sendTelemetryData("temperature", randomTemperature);
-  tb.sendTelemetryData("humidity", randomHumidity);
-  tb.sendTelemetryData("pressure", randomPressure);
+  tb.sendTelemetryData("temperature", returnedData.temperature);
+  tb.sendTelemetryData("humidity", returnedData.humidity);
 
   Serial.println("Telemetry data sent.");
-
-  if (send_passed > send_delay) {
-    send_passed = 0;
-  }
 
   // Process messages
   tb.loop();
