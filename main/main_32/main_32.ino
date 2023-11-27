@@ -12,6 +12,7 @@
 #define TOKEN               "pHYZ7VkKvoxTOyy6LDc1"
 #define THINGSBOARD_SERVER  "demo.thingsboard.io"
 constexpr uint16_t THINGSBOARD_PORT = 1883;
+constexpr uint16_t MAX_MESSAGE_SIZE = 128;
 
 // Defining objects necessary for MQTT and ThingsBoard on ESP32
 WiFiClient espClient;
