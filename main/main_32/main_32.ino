@@ -1,6 +1,6 @@
 #include <ThingsBoard.h>
 #include <Arduino_MQTT_Client.h>
-#include <WiFiClient.h>
+#include <WiFi.h>
 #include <ArduinoJson.h>
 #include "Adafruit_SHT4x.h"
 
@@ -8,16 +8,17 @@
 #define WIFI_AP_NAME        "Vodafonenet_Wifi_8047"
 #define WIFI_PASSWORD       "U5DerrGGDUEz"
 
-// Credentials for the ThingsBoard platform
-#define TOKEN               "pHYZ7VkKvoxTOyy6LDc1"
-#define THINGSBOARD_SERVER  "demo.thingsboard.io"
-constexpr uint16_t THINGSBOARD_PORT = 1883;
-constexpr uint16_t MAX_MESSAGE_SIZE = 128;
+// Credentials for the NDU platform
+#define TOKEN       "It1qTkLliajffjEAGUeW"
+#define NDU_SERVER  "smartapp.netcad.com"
+constexpr uint16_t NDU_PORT = 1883;
+constexpr uint16_t MAX_MESSAGE_SIZE = 128; 
 
-// Defining objects necessary for MQTT and ThingsBoard on ESP32
+// Defining objects necessary for MQTT and NDU on ESP32
 WiFiClient espClient;
 Arduino_MQTT_Client mqttClient(espClient);
 ThingsBoard tb(mqttClient, MAX_MESSAGE_SIZE);
+
 int status = WL_IDLE_STATUS;
 
 // Creating an instance of the Adafruit SHT4x sensor
@@ -76,8 +77,8 @@ void shtBegin(){
 SHT40Data readTemperatureAndHumidity(){
   sensors_event_t humidity, temp;
   sht4.getEvent(&humidity, &temp);
-  //Serial.print("Temperature: "); Serial.print(temp.temperature); Serial.println(" degrees C");
-  //Serial.print("Humidity: "); Serial.print(humidity.relative_humidity); Serial.println("% rH");
+  Serial.print("Temperature: "); Serial.print(temp.temperature); Serial.println(" degrees C");
+  Serial.print("Humidity: "); Serial.print(humidity.relative_humidity); Serial.println("% rH");
 
   SHT40Data data;
   data.temperature = temp.temperature;
@@ -93,26 +94,26 @@ void setup() {
 }
 
 void loop() {
-  delay(1000);
+  delay(5000);
+  
   if (WiFi.status() != WL_CONNECTED) {
     reconnect();
     return;
   }
 
   if (!tb.connected()) {
-    if (!tb.connect(THINGSBOARD_SERVER, TOKEN, THINGSBOARD_PORT)) {
-      Serial.println("Failed to connect to ThingsBoard Server...");
+    if (!tb.connect(NDU_SERVER, TOKEN, NDU_PORT)) {
+      Serial.println("Failed to connect to NDU Server...");
       return;
     }
   }
 
   SHT40Data returnedData = readTemperatureAndHumidity();
 
-  // Sending temperature and humidity data to ThingsBoard
-  tb.sendTelemetryData("temperature", returnedData.temperature);
-  tb.sendTelemetryData("humidity", returnedData.humidity);
+  // Sending temperature and humidity data to NDU
+  tb.sendTelemetryData("developer_temperature", returnedData.temperature);
+  tb.sendTelemetryData("developer_humidity", returnedData.humidity);
 
   //Serial.println("Telemetry data sent.");
-
   tb.loop();
 }
